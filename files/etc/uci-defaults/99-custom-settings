@@ -1,0 +1,13 @@
+
+#!/bin/sh
+# 设置默认管理 IP
+uci set network.lan.ipaddr='192.168.2.2'
+uci commit network
+
+# 允许 root 空密码登录
+uci delete system.@system[0].root_password
+uci commit system
+
+# 允许 SSH 空密码登录
+sed -i 's/option PasswordAuth .*/option PasswordAuth yes/' /etc/config/dropbear
+sed -i 's/option RootPasswordAuth .*/option RootPasswordAuth on/' /etc/config/dropbear

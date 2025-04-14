@@ -10,31 +10,46 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
+      with:
+        path: "custom_files"  # 明确自定义文件的路径
 
     - name: Install dependencies
       run: |
+        # 启用 Universe 仓库并安装基础工具
+        sudo apt install -y software-properties-common
+        sudo add-apt-repository -y universe
         sudo apt update
         sudo apt install -y build-essential clang flex bison g++ gawk \
-          gettext libncurses-dev libssl-dev python3-distutils rsync unzip zlib1g-dev file wget
+          gettext libncurses-dev libssl-dev python3-distutils rsync unzip \
+          zlib1g-dev file wget ccache libelf-dev
 
     - name: Clone ImmortalWrt
       run: |
-        git clone https://github.com/immortalwrt/immortalwrt.git source
+        git clone --depth=1 https://github.com/immortalwrt/immortalwrt.git source
         cd source
+        # 确认标签是否存在（或替换为有效分支）
         git checkout 2024.04.18
         ./scripts/feeds update -a
         ./scripts/feeds install -a
 
     - name: Copy custom files
       run: |
-        cp .config source/.config
-        cp -r files source/files
+        # 检查自定义文件是否存在再复制
+        if [ -f "custom_files/.config" ]; then
+          cp custom_files/.config source/.config
+        else
+          echo "Warning: .config not found! Using default config."
+        fi
+        if [ -d "custom_files/files" ]; then
+          cp -r custom_files/files source/files
+        fi
 
     - name: Build firmware
       run: |
         cd source
         make defconfig
-        make -j$(nproc) V=s
+        # 限制并行进程数，避免内存不足
+        make -j$(($(nproc)/2)) V=s
 
     - name: Upload firmware
       uses: actions/upload-artifact@v4
